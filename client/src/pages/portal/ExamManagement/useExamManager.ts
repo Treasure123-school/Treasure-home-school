@@ -52,7 +52,7 @@ export function useExamManager() {
   });
 
   const { createQuestionMutation } = useCreateQuestionMutation({
-    selectedExam, setIsQuestionDialogOpen: S.setIsQuestionDialogOpen, setEditingImageUrl, resetQuestion, adjustQuestionCountCache,
+    setIsQuestionDialogOpen: S.setIsQuestionDialogOpen, setEditingImageUrl, resetQuestion, adjustQuestionCountCache,
   });
 
   const { updateQuestionMutation } = useUpdateQuestionMutation({

@@ -3,6 +3,7 @@ import { apiRequest } from '@/lib/queryClient';
 import type { Exam, ExamQuestion } from '@shared/schema.pg';
 import type { QuestionForm } from './schemas';
 import { toast } from '@/hooks/use-toast';
+import { questionTextToPlainText } from '@/components/question/QuestionRichText';
 
 /** Auto-split from ExamManagement.tsx — see git history for original context. */
 export function useQuestionDialogHandlers({ selectedExam, examQuestions, editingQuestion, setEditingQuestion, setEditingImageUrl, options, editingImageUrl, setIsQuestionDialogOpen, resetQuestion, watchQuestion, setQuestionValue, createQuestionMutation, updateQuestionMutation }: { selectedExam: any; examQuestions: any; editingQuestion: any; setEditingQuestion: any; setEditingImageUrl: any; options: any; editingImageUrl: any; setIsQuestionDialogOpen: any; resetQuestion: any; watchQuestion: any; setQuestionValue: any; createQuestionMutation: any; updateQuestionMutation: any }) {
@@ -68,7 +69,7 @@ export function useQuestionDialogHandlers({ selectedExam, examQuestions, editing
       return;
     }
     // Enhanced validation for question text
-    if (!data.questionText || data.questionText.trim().length < 5) {
+    if (questionTextToPlainText(data.questionText).length < 5) {
       toast({
         title: "Invalid Question",
         description: "Question text must be at least 5 characters long",

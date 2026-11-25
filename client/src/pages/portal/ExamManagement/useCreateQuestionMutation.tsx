@@ -5,7 +5,7 @@ import type { QuestionForm } from './schemas';
 import { toast } from '@/hooks/use-toast';
 
 /** Auto-split from ExamManagement.tsx — see git history for original context. */
-export function useCreateQuestionMutation({ selectedExam, setIsQuestionDialogOpen, setEditingImageUrl, resetQuestion, adjustQuestionCountCache }: { selectedExam: any; setIsQuestionDialogOpen: any; setEditingImageUrl: any; resetQuestion: any; adjustQuestionCountCache: any }) {
+export function useCreateQuestionMutation({ setIsQuestionDialogOpen, setEditingImageUrl, resetQuestion, adjustQuestionCountCache }: { setIsQuestionDialogOpen: any; setEditingImageUrl: any; resetQuestion: any; adjustQuestionCountCache: any }) {
     // Create question mutation with no retries to prevent circuit breaker amplification
   const createQuestionMutation = useMutation({
     retry: false, // Disable retries for question creation to prevent circuit breaker amplification
@@ -16,26 +16,16 @@ export function useCreateQuestionMutation({ selectedExam, setIsQuestionDialogOpe
       const result = await response.json();
       return result;
     },
-    onMutate: async (questionData) => {
-      // Immediately bump the "X questions" badge — don't wait for the
-      // background invalidation below to refetch it.
-      adjustQuestionCountCache(questionData.examId, 1);
-      return { examId: questionData.examId };
-    },
-    onSuccess: (createdQuestion) => {
-      toast({
-        title: "Success",
-        description: "Question added successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', selectedExam?.id] });
+    onSuccess: (createdQuestion, variables) => {
+      const examId = createdQuestion?.examId ? Number(createdQuestion.examId) : variables.examId;
+      adjustQuestionCountCache(examId, 1);
+      queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', examId] });
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'], exact: false });
-      // Invalidate question options for the newly created question to ensure fresh data
       if (createdQuestion?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/question-options', createdQuestion.id] });
       }
       setIsQuestionDialogOpen(false);
       setEditingImageUrl(null);
-      // Reset form with default values
       resetQuestion({
         questionType: 'multiple_choice',
         points: 1,
@@ -49,14 +39,12 @@ export function useCreateQuestionMutation({ selectedExam, setIsQuestionDialogOpe
           { optionText: '', isCorrect: false },
         ]
       });
+      toast({
+        title: "Success",
+        description: "Question added successfully",
+      });
     },
-    onError: (error: any, _variables, context) => {
-      // Roll back the optimistic question-count increment
-      if (context?.examId) {
-        adjustQuestionCountCache(context.examId, -1);
-      }
-
-      // Use classified error types for better error handling
+    onError: (error: any) => {
       if (error?.message?.includes('Circuit breaker is OPEN')) {
         toast({
           title: "Connection Issue",
