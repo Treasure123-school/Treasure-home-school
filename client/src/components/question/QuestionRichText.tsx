@@ -6,7 +6,7 @@ import DOMPurify from "dompurify";
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough, List, ListOrdered,
   Undo2, Redo2, RemoveFormatting, Subscript as SubscriptIcon,
-  Superscript as SuperscriptIcon, Sigma, GripVertical,
+  Superscript as SuperscriptIcon, Sigma, GripVertical, Type,
 } from "lucide-react";
 import MathText from "@/components/shared/MathText";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -194,14 +194,20 @@ function FormulaSelect({
 function QuestionSelectionToolbar({
   editor,
   containerRef,
+  anchorRef,
   compact,
   disabled,
+  manualOpen,
+  onOpenChange,
   insertFormula,
 }: {
   editor: Editor;
   containerRef: RefObject<HTMLElement | null>;
+  anchorRef?: RefObject<HTMLElement | null>;
   compact: boolean;
   disabled: boolean;
+  manualOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   insertFormula: (insert: string) => void;
 }) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -211,11 +217,17 @@ function QuestionSelectionToolbar({
   const customPosRef = useRef<{ top: number; left: number } | null>(null);
   const selectionKeyRef = useRef("");
   const dragRef = useRef<{ startX: number; startY: number; top: number; left: number } | null>(null);
+  const previousManualOpenRef = useRef(false);
 
   const clearCustomPos = useCallback(() => {
     customPosRef.current = null;
     setCustomPos(null);
   }, []);
+
+  useEffect(() => {
+    if (manualOpen && !previousManualOpenRef.current) clearCustomPos();
+    previousManualOpenRef.current = manualOpen;
+  }, [manualOpen, clearCustomPos]);
 
   useEffect(() => {
     if (editor.isDestroyed) return;
@@ -225,40 +237,55 @@ function QuestionSelectionToolbar({
       clearCustomPos();
       selectionKeyRef.current = "";
       setPos(null);
+      onOpenChange(false);
     };
 
     const updatePosition = () => {
       if (frozenRef.current || editor.isDestroyed) return;
 
       const container = containerRef.current;
+      if (!container || !editor.isFocused) {
+        hide();
+        return;
+      }
+
       const selection = window.getSelection();
-      if (!container || editor.state.selection.empty || !editor.isFocused) {
-        hide();
-        return;
-      }
-      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-        hide();
-        return;
-      }
-
-      const range = selection.getRangeAt(0);
       const editorDom = editor.view.dom as HTMLElement;
-      if (!editorDom.contains(range.commonAncestorContainer)) {
+      let rect: { top: number; bottom: number; left: number; right: number; width: number } | null = null;
+      if (!editor.state.selection.empty && selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        if (editorDom.contains(range.commonAncestorContainer)) {
+          const candidate = range.getBoundingClientRect();
+          if (candidate.width) rect = candidate;
+        }
+      }
+
+      if (!rect && manualOpen) {
+        try {
+          const coords = editor.view.coordsAtPos(editor.state.selection.from);
+          rect = { top: coords.top, bottom: coords.bottom, left: coords.left, right: coords.left, width: 1 };
+        } catch {
+          const iconRect = anchorRef?.current?.getBoundingClientRect();
+          if (iconRect) {
+            rect = { top: iconRect.top, bottom: iconRect.bottom, left: iconRect.left, right: iconRect.right, width: iconRect.width };
+          }
+        }
+      }
+
+      if (!rect) {
         hide();
         return;
       }
 
-      const rect = range.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
-      if (!rect.width) {
-        hide();
-        return;
-      }
-
-      const selectionKey = `${editor.state.selection.from}:${editor.state.selection.to}`;
-      if (selectionKeyRef.current !== selectionKey) {
-        selectionKeyRef.current = selectionKey;
-        clearCustomPos();
+      if (!editor.state.selection.empty) {
+        const selectionKey = `${editor.state.selection.from}:${editor.state.selection.to}`;
+        if (selectionKeyRef.current !== selectionKey) {
+          selectionKeyRef.current = selectionKey;
+          clearCustomPos();
+        }
+      } else {
+        selectionKeyRef.current = "";
       }
       if (customPosRef.current) return;
 
@@ -284,6 +311,7 @@ function QuestionSelectionToolbar({
     document.addEventListener("selectionchange", schedule);
     window.addEventListener("scroll", schedule, true);
     window.addEventListener("resize", schedule);
+    updatePosition();
 
     return () => {
       cancelAnimationFrame(frame);
@@ -293,7 +321,7 @@ function QuestionSelectionToolbar({
       window.removeEventListener("scroll", schedule, true);
       window.removeEventListener("resize", schedule);
     };
-  }, [editor, containerRef, compact, clearCustomPos]);
+  }, [editor, containerRef, anchorRef, compact, manualOpen, onOpenChange, clearCustomPos]);
 
   const startDrag = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
     const origin = customPos || pos;
@@ -415,6 +443,7 @@ function QuestionSelectionToolbar({
           if (!open) {
             clearCustomPos();
             setPos(null);
+            onOpenChange(false);
           }
         }}
       />
@@ -442,6 +471,8 @@ export function QuestionRichTextEditor({
   compact = false,
 }: QuestionRichTextEditorProps) {
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const formatIconRef = useRef<HTMLButtonElement>(null);
+  const [manualToolbarOpen, setManualToolbarOpen] = useState(false);
   const editor = useEditor({
     extensions: [StarterKit, SubscriptMark, SuperscriptMark],
     content: questionTextToHtml(value),
@@ -521,13 +552,36 @@ export function QuestionRichTextEditor({
           </div>
         </div>
       )}
-      <EditorContent id={id} editor={editor} className={`question-rich-editor text-sm ${compact ? "rounded-b-md px-3 py-0" : "px-3 py-2"}`} />
+      <EditorContent id={id} editor={editor} className={`question-rich-editor text-sm ${compact ? "rounded-b-md py-0 pl-3 pr-8" : "px-3 py-2"}`} />
+      {compact && !disabled && (
+        <button
+          ref={formatIconRef}
+          type="button"
+          title="Open formatting tools"
+          aria-label="Open formatting tools"
+          className="absolute right-1 top-1/2 z-10 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            if (manualToolbarOpen) {
+              setManualToolbarOpen(false);
+              return;
+            }
+            editor.chain().focus().run();
+            setManualToolbarOpen(true);
+          }}
+        >
+          <Type className="h-3.5 w-3.5" />
+        </button>
+      )}
       {compact && (
         <QuestionSelectionToolbar
           editor={editor}
           containerRef={editorContainerRef}
+          anchorRef={formatIconRef}
           compact={compact}
           disabled={disabled}
+          manualOpen={manualToolbarOpen}
+          onOpenChange={setManualToolbarOpen}
           insertFormula={insertFormula}
         />
       )}
