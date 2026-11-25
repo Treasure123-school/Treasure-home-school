@@ -1,6 +1,5 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import UnderlineExt from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
@@ -119,7 +118,6 @@ export default function RichTextEditor({
         code: { HTMLAttributes: { class: 'bg-muted text-foreground px-1 py-0.5 rounded font-mono text-sm' } },
         codeBlock: { HTMLAttributes: { class: 'bg-muted p-4 rounded-lg font-mono text-sm my-4 overflow-x-auto' } },
       }),
-      UnderlineExt,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Image.configure({ HTMLAttributes: { class: 'max-w-full h-auto rounded-lg my-4 cursor-pointer' }, allowBase64: true }),
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-primary underline underline-offset-2 hover:opacity-80', target: '_blank', rel: 'noopener noreferrer' } }),

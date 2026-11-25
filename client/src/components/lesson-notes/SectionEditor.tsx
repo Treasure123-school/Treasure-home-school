@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import UnderlineExt from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import { Table } from '@tiptap/extension-table';
@@ -45,7 +44,6 @@ export default function SectionEditor({
       orderedList: { HTMLAttributes: { class: 'se-ol' } },
       horizontalRule: { HTMLAttributes: { class: 'se-hr' } },
     }),
-    UnderlineExt,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Link.configure({ openOnClick: false, HTMLAttributes: { class: 'se-link' } }),
     ...(enableImage

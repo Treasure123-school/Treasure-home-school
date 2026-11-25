@@ -4,6 +4,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useAuth } from '@/lib/auth';
 import { useLocation } from 'wouter';
 import MathText from '@/components/shared/MathText';
+import { QuestionRichText } from '@/components/question/QuestionRichText';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -565,8 +566,8 @@ export default function StudentExamResults() {
                           )}
                         </div>
                         {question.questionText && (
-                          <MathText
-                            as="p"
+                          <QuestionRichText
+                            as="div"
                             className="text-sm text-gray-700 dark:text-gray-300 font-medium mb-3"
                             text={question.questionText}
                           />

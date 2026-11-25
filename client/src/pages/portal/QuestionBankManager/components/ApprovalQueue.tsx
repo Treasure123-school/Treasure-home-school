@@ -7,6 +7,7 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { StatusBadge, DifficultyBadge } from "./StatusBadge";
 import { PaginationBar } from "./PaginationBar";
 import { PAGE_SIZE } from "../constants";
+import { QuestionRichText } from "@/components/question/QuestionRichText";
 
 interface ApprovalQueueProps {
   onWorkflow: (action: string, item: any) => void;
@@ -61,7 +62,7 @@ export function ApprovalQueue({ onWorkflow }: ApprovalQueueProps) {
             >
               <div className="p-4 space-y-3">
                 <div className="flex items-start gap-3 justify-between">
-                  <p className="text-sm font-medium leading-snug flex-1 whitespace-pre-wrap">{item.questionText}</p>
+                  <QuestionRichText as="div" text={item.questionText} className="text-sm font-medium leading-snug flex-1" />
                   <StatusBadge status={item.status} />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

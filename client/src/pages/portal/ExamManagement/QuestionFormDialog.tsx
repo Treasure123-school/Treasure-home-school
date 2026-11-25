@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Plus, Edit, Trash2, Save } from 'lucide-react';
 import { Controller } from 'react-hook-form';
 import { QuestionImageUpload } from '@/components/question/QuestionImageUpload';
+import { QuestionRichTextEditor } from '@/components/question/QuestionRichText';
 import type { ExamManager } from './useExamManager';
 
 /** Add/edit question form dialog. */
@@ -43,12 +44,19 @@ export function QuestionFormDialog({ m }: { m: ExamManager }) {
                       <form onSubmit={handleQuestionSubmit(onSubmitQuestion, onInvalidQuestion)} className="space-y-4">
                         <div>
                           <Label htmlFor="questionText">Question Text</Label>
-                          <Textarea
-                            id="questionText"
-                            {...registerQuestion('questionText')}
-                            data-testid="textarea-question-text"
-                            placeholder="Enter your question here..."
-                            rows={3}
+                          <Controller
+                            name="questionText"
+                            control={questionControl}
+                            render={({ field }) => (
+                              <QuestionRichTextEditor
+                                id="questionText"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                                placeholder="Enter your question here..."
+                                minHeight="96px"
+                                disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
+                              />
+                            )}
                           />
                           {questionErrors.questionText && <p className="text-sm text-red-500">{questionErrors.questionText.message}</p>}
                         </div>

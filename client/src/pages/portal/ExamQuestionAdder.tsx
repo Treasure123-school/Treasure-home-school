@@ -28,6 +28,7 @@ import { BulkCSVUploadPanel } from '@/components/shared/BulkCSVQuestionsDialog';
 import type { ParsedQuestion } from '@/components/shared/BulkCSVQuestionsDialog';
 import { QuestionImageUpload } from '@/components/question/QuestionImageUpload';
 import { ManualQuestionFields, DEFAULT_OPTIONS } from '@/components/question/ManualQuestionFields';
+import { QuestionRichText, questionTextToPlainText } from '@/components/question/QuestionRichText';
 import type { QuestionOption } from '@/components/question/ManualQuestionFields';
 
 interface ExamQuestionAdderProps {
@@ -316,7 +317,8 @@ export default function ExamQuestionAdder({
     };
 
     const handleManualSubmit = () => {
-        if (!questionText.trim() || questionText.trim().length < 5) {
+        const plainQuestionText = questionTextToPlainText(questionText);
+        if (plainQuestionText.length < 5) {
             return toast({ title: 'Error', description: 'Question text must be at least 5 characters', variant: 'destructive' });
         }
         const data: any = {
@@ -552,7 +554,7 @@ export default function ExamQuestionAdder({
                                                 <Badge className={`text-[10px] ${getDifficultyColor(q.difficulty)}`}>{q.difficulty}</Badge>
                                                 <Badge variant="secondary" className="text-[10px]">{q.points}pt</Badge>
                                             </div>
-                                            <p className="text-sm whitespace-pre-wrap break-words">{q.questionText}</p>
+                                            <QuestionRichText as="div" text={q.questionText} className="text-sm break-words" />
                                             {q.options?.length > 0 && (
                                                 <div className="mt-1.5 flex flex-wrap gap-1">
                                                     {q.options.map((o: any, i: number) => (
@@ -714,7 +716,7 @@ export default function ExamQuestionAdder({
                                                     <Badge className={`text-[10px] ${getDifficultyColor(q.difficulty)}`}>{q.difficulty}</Badge>
                                                     <Badge variant="secondary" className="text-[10px]">{q.points}pt</Badge>
                                                 </div>
-                                                <p className="text-sm whitespace-pre-wrap break-words">{q.questionText}</p>
+                                                <QuestionRichText as="div" text={q.questionText} className="text-sm break-words" />
                                                 {q.options?.length > 0 && (
                                                     <div className="mt-1.5 flex flex-wrap gap-1">
                                                         {q.options.map((o: any, i: number) => (

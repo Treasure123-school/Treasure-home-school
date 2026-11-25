@@ -23,6 +23,7 @@ import {
   BookOpen, Clock, Calendar, User, FileText, BarChart2, AlertCircle,
   Activity, GraduationCap, Layers, RotateCcw, Loader2,
 } from 'lucide-react';
+import { QuestionRichText, questionTextToPlainText } from '@/components/question/QuestionRichText';
 import { format } from 'date-fns';
 import { StudentResultsToolbar } from '@/components/portal/StudentResultsToolbar';
 import { StudentResultMobileCard } from '@/components/portal/StudentResultMobileCard';
@@ -211,7 +212,7 @@ function exportQuestionsCSV(analytics: AnalyticsData) {
     const diff = difficultyLabel(q.correctPercent);
     return [
       q.orderNumber,
-      q.questionText.replace(/"/g, '""'),
+      questionTextToPlainText(q.questionText).replace(/"/g, '""'),
       q.questionType,
       q.points,
       q.totalAttempted,
@@ -824,10 +825,10 @@ function QuestionsTab({ analytics }: { analytics: AnalyticsData }) {
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-snug whitespace-pre-wrap">
-                      <span className="text-muted-foreground mr-1.5 font-mono">Q{q.orderNumber}.</span>
-                      {q.questionText}
-                    </p>
+                    <div className="flex items-start gap-1.5 text-sm font-medium leading-snug">
+                      <span className="text-muted-foreground font-mono shrink-0">Q{q.orderNumber}.</span>
+                      <QuestionRichText as="div" text={q.questionText} className="min-w-0 flex-1" />
+                    </div>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       <Badge variant="outline" className="text-xs capitalize">{(q.questionType ?? '').replace('_', ' ')}</Badge>
                       <span className="text-xs text-muted-foreground">{q.points} pt{q.points !== 1 ? 's' : ''}</span>

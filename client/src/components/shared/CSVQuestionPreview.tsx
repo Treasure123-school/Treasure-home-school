@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, ArrowLeft, Check, FileText, Loader2 } from 'lucide-react';
 import type { ParsedQuestion } from './BulkCSVQuestionsDialog';
+import { QuestionRichText } from '@/components/question/QuestionRichText';
 
 const PAGE_SIZE = 20;
 
@@ -125,7 +126,7 @@ export function CSVQuestionPreview({
               <span className="text-xs text-muted-foreground font-medium">{q.points} pt{q.points !== 1 ? 's' : ''}</span>
             </div>
 
-            <p className="text-sm whitespace-pre-wrap break-words">{q.questionText}</p>
+            <QuestionRichText as="div" text={q.questionText} className="text-sm break-words" />
 
             {q.options && q.options.length > 0 && (
               <div className="space-y-1 pl-1">

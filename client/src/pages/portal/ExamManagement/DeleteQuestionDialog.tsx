@@ -1,4 +1,5 @@
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { QuestionRichText } from '@/components/question/QuestionRichText';
 import type { ExamQuestion } from '@shared/schema.pg';
 
 export interface DeleteQuestionDialogProps {
@@ -18,9 +19,11 @@ export function DeleteQuestionDialog({ question, isDeleting, onCancel, onConfirm
         <>
           Are you sure you want to delete this question? This action cannot be undone.
           {question?.questionText && (
-            <span className="mt-2 block rounded-md bg-muted p-2 text-xs text-muted-foreground line-clamp-3">
-              {question.questionText}
-            </span>
+            <QuestionRichText
+              as="div"
+              text={question.questionText}
+              className="mt-2 block rounded-md bg-muted p-2 text-xs text-muted-foreground line-clamp-3"
+            />
           )}
         </>
       }

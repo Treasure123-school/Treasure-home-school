@@ -11,6 +11,7 @@ import { DIFFICULTY_OPTS, PAGE_SIZE } from "../constants";
 import type { ContextFilters } from "../types";
 import { ManualQuestionFields } from "@/components/question/ManualQuestionFields";
 import type { QuestionOption } from "@/components/question/ManualQuestionFields";
+import { questionTextToPlainText } from "@/components/question/QuestionRichText";
 
 // isAdmin is read from outer scope via closure in the original; pass it as prop here
 interface QuestionFormDialogProps {
@@ -174,7 +175,7 @@ export function QuestionFormDialog({
   });
 
   const handleSave = () => {
-    if (!String(form.questionText).trim())
+    if (!questionTextToPlainText(form.questionText))
       return toast({ title: "Question text is required", variant: "destructive" });
     if (!form.bankId)
       return toast({ title: "Please select a question bank", variant: "destructive" });

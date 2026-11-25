@@ -8,7 +8,6 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import UnderlineExt from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import { Table } from '@tiptap/extension-table';
@@ -670,7 +669,6 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
         orderedList: { HTMLAttributes: { class: 'doc-ol' } },
         horizontalRule: { HTMLAttributes: { class: 'doc-hr' } },
       }),
-      UnderlineExt,
       TextStyle,
       Color,
       FontFamily,

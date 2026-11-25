@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
+import { QuestionRichText } from '@/components/question/QuestionRichText';
 import {
   Clock, User, FileText, Award, CheckCircle2, XCircle, Search,
   Save, Loader2, ChevronLeft, ChevronRight, ArrowLeft, BookOpen,
@@ -117,7 +118,7 @@ function QuestionBreakdown({ questions }: { questions: QuestionWithAnswer[] }) {
               data-testid={`btn-question-${i}`}
             >
               <span className="text-xs font-bold text-muted-foreground shrink-0">Q{q.orderNumber}</span>
-              <span className="flex-1 text-sm font-medium line-clamp-1">{q.questionText}</span>
+              <QuestionRichText as="span" text={q.questionText} className="flex-1 text-sm font-medium line-clamp-1" />
               <div className="flex items-center gap-1.5 shrink-0">
                 <Badge variant="outline" className="text-xs capitalize hidden sm:inline-flex">{q.questionType.replace('_', ' ')}</Badge>
                 <span className="text-xs text-muted-foreground">{q.points}pt</span>

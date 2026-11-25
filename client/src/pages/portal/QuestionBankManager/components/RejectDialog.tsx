@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { XCircle } from "lucide-react";
+import { QuestionRichText } from "@/components/question/QuestionRichText";
 
 interface RejectDialogProps {
   target:    any | null;
@@ -39,7 +40,7 @@ export function RejectDialog({ target, isPending, onClose, onConfirm }: RejectDi
         <div className="space-y-3 py-2">
           {target && (
             <div className="bg-muted/50 rounded-lg p-3 border-l-3 border-l-muted-foreground">
-              <p className="text-sm text-muted-foreground line-clamp-3">{target.questionText}</p>
+              <QuestionRichText as="div" text={target.questionText} className="text-sm text-muted-foreground line-clamp-3" />
             </div>
           )}
           <div className="space-y-1.5">

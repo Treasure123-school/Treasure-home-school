@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Exam, Class, Subject } from '@shared/schema.pg';
 import type { ExamManager } from './useExamManager';
 import { QuestionOptions } from './QuestionOptions';
+import { QuestionRichText } from '@/components/question/QuestionRichText';
 
 /** Student-view preview dialog. */
 export function PreviewDialog({ m }: { m: ExamManager }) {
@@ -60,7 +61,7 @@ export function PreviewDialog({ m }: { m: ExamManager }) {
                         <div className="flex items-start gap-4">
                           <Badge variant="outline">Q{index + 1}</Badge>
                           <div className="flex-1">
-                            <p className="font-medium mb-2 whitespace-pre-wrap">{question.questionText}</p>
+                            <QuestionRichText as="div" text={question.questionText} className="font-medium mb-2" />
                             <p className="text-xs text-muted-foreground mb-3">
                               {question.points} {question.points === 1 ? 'point' : 'points'}
                             </p>

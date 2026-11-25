@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { StatusBadge, DifficultyBadge } from "./StatusBadge";
 import { TYPE_OPTS, DIFFICULTY_LEFT } from "../constants";
+import { QuestionRichText } from "@/components/question/QuestionRichText";
 
 interface QuestionCardProps {
   item:          any;
@@ -46,9 +47,11 @@ export function QuestionCard({
       <div className="p-4 space-y-3">
         {/* Header row */}
         <div className="flex items-start gap-2 justify-between">
-          <p className="text-sm font-medium leading-snug flex-1 text-foreground whitespace-pre-wrap">
-            {item.questionText}
-          </p>
+          <QuestionRichText
+            as="div"
+            text={item.questionText}
+            className="text-sm font-medium leading-snug flex-1 text-foreground"
+          />
           <div className="flex items-center gap-1 flex-shrink-0">
             <StatusBadge status={item.status} />
             {hasActions && (

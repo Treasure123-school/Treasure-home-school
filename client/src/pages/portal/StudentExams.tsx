@@ -5,6 +5,7 @@ import { fetchServerTimeOffset, computeRemainingMs, msToWholeSeconds } from '@/l
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import MathText from '@/components/shared/MathText';
+import { QuestionRichText } from '@/components/question/QuestionRichText';
 import { prewarmMathCache } from '@/lib/mathRender';
 
 // Schedule low-priority background work without blocking the render/paint
@@ -3291,8 +3292,8 @@ export default function StudentExams() {
                     </p>
                   )}
 
-                  <MathText
-                    as="p"
+                  <QuestionRichText
+                    as="div"
                     className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap"
                     text={currentQuestion.questionText}
                   />

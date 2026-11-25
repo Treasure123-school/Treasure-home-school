@@ -22,6 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { QuestionImageUpload } from "@/components/question/QuestionImageUpload";
+import { QuestionRichTextEditor } from "@/components/question/QuestionRichText";
 import { Plus, Trash2 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -117,14 +118,15 @@ export function ManualQuestionFields({
         <Label>
           Question Text <span className="text-destructive">*</span>
         </Label>
-        <Textarea
-          value={questionText}
-          onChange={(e) => onQuestionTextChange(e.target.value)}
-          placeholder="Enter your question..."
-          rows={3}
-          disabled={disabled}
-          className="mt-1.5"
-        />
+        <div className="mt-1.5">
+          <QuestionRichTextEditor
+            value={questionText}
+            onChange={onQuestionTextChange}
+            placeholder="Enter your question..."
+            minHeight="96px"
+            disabled={disabled}
+          />
+        </div>
       </div>
 
       {/* Type + Points */}

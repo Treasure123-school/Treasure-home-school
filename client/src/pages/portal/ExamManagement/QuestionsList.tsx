@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Edit, Loader2, Trash2, MoreVertical } from 'lucide-react';
 import type { ExamManager } from './useExamManager';
 import { QuestionOptions } from './QuestionOptions';
+import { QuestionRichText } from '@/components/question/QuestionRichText';
 
 /** List of questions inside the manage-questions modal. */
 export function QuestionsList({ m }: { m: ExamManager }) {
@@ -31,7 +32,7 @@ export function QuestionsList({ m }: { m: ExamManager }) {
                               </Badge>
                               <span className="text-sm text-muted-foreground">{question.points} points</span>
                             </div>
-                            <p className="mb-2 font-medium whitespace-pre-wrap">{question.questionText}</p>
+                            <QuestionRichText as="div" text={question.questionText} className="mb-2 font-medium" />
 
                             {question.instructions && (
                               <div className="mb-2 p-2 bg-primary/5 rounded text-sm">
